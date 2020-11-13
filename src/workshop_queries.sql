@@ -2,10 +2,7 @@
 -- SQL WORKSHOP FOR POLITICAL SCIENCE -------------
 -- Remi Cura, 2020/11/11
 
-
-
-
-
+ 
 ------------------------------------------------
 --------------- QUERYING DATA ------------------
 
@@ -71,26 +68,13 @@ SELECT
 
 
 -- all good, but what about using real data?
-
--------------------------
---- BASIC FROM PART  ----
---- 002 describe where the data should come from
+ 
 
 -- 0020) querying data from a table
-SELECt legislator_first_name, legislator_last_name
-	, legislator_birthday, legislator_gender 
-		-- list the columns you are interested in
-FROM consolidated___congress.legislators l -- tell where the data is 
-LIMIT 5 ; -- only 5 rows please
-
-	--	legislator_first_name|legislator_last_name|legislator_birthday|legislator_gender|
-	--	---------------------|--------------------|-------------------|-----------------|
-	--	Sherrod              |Brown               |         1952-11-09|M                |
-	--	Maria                |Cantwell            |         1958-10-13|F                |
-	--	Benjamin             |Cardin              |         1943-10-05|M                |
-	--	Thomas               |Carper              |         1947-01-23|M                |
-	--	Robert               |Casey               |         1960-04-13|M                |
-
+SELECt  legislator_last_name , legislator_birthday 
+FROM consolidated___congress.legislators l  
+LIMIT 5 ; 
+  
 
 -- 0021) using alias
 SELECT legislator_last_name AS lname
@@ -152,6 +136,8 @@ ORDER BY legislator_last_name DESC, legislator_first_name ASC
 LIMIT  5 ; 
 
 
+
+
 -- 0050) What about people with same name
 	-- who is J. Kennedy?
 SELECT legislator_last_name, legislator_first_name , legislator_birthday 
@@ -199,6 +185,8 @@ FROM consolidated___congress.legislators as l
 WHERE legislator_last_name = 'Kennedy'
 	and legislator_first_name = 'John'
 ORDER BY legislator_id , term_start_date ;
+ 
+
 
 
 -- 0102) Kennedys bills inner join 
@@ -212,7 +200,7 @@ WHERE legislator_last_name = 'Kennedy'
 ORDER BY legislator_id
 LIMIT 5 ;
 
--- 0102) Kennedys bills left join 
+-- 0103) Kennedys bills left join 
 SELECt l.legislator_id, l.legislator_last_name 
 	, b.congress_number , b.bill_id 
 FROM consolidated___congress.legislators AS l 
@@ -226,7 +214,7 @@ LIMIT 5 ;
 
 
 
--- 0103) bills cosponsored by legislator
+-- 0104) bills cosponsored by legislator
 SELECt l.legislator_id, l.legislator_last_name 
 	, b.congress_number , b.bill_id 
 FROM consolidated___congress.legislators AS l 
@@ -238,7 +226,9 @@ WHERE legislator_last_name = 'Kennedy'
 	and legislator_first_name = 'John'
 ORDER BY legislator_id ;
 
--- 0104) Did J. Kennedy cosponsored a bill containing ‘education’ in its title during congress 115?
+
+
+-- 0105) Did J. Kennedy cosponsored a bill containing ‘education’ in its title during congress 115?
 SELECt l.legislator_id, l.legislator_last_name 
 	, b.congress_number , b.bill_id 
 	, bt.bill_title 
@@ -281,6 +271,7 @@ WHERE legislator_birthday > '1900-01-01'
 GROUP BY legislator_gender 
 ORDER BY legislator_gender DESC ; 
 
+
 -- 0203) distinct ON : finding youngest of each gender
 SELECT DISTINCT ON (legislator_gender ) 
     legislator_last_name, legislator_gender
@@ -308,6 +299,36 @@ WHERE l2.legislator_birthday > '1900-01-01'
 	AND b.congress_number = 115
 GROUP BY l2.legislator_id,  l2.legislator_gender, l.legislator_gender
 ORDER BY cosponsor_gender, cosponsor_id, bill_sponsor_gender; 
+
+
+
+-- 0302) for all bills, indicate if the sponsor is a female or not
+-- look at all bills that were cosponsored, store the cosponsor gender
+-- count, for each legislator, how much cosponsr of female vs male bills
+-- avg the result !
+WITH cosponsor_gender_sponsor_gender AS (
+	SELECT l2.legislator_id as cosponsor_id , l2.legislator_gender AS cosponsor_gender
+		, l.legislator_gender as bill_sponsor_gender
+		, count(*) as c 
+	FROM consolidated___congress.bills b 
+		INNER JOIN consolidated___congress.bill_cosponsors bc 
+			USING (congress_number, bill_id)
+		INNER JOIN consolidated___congress.legislators l 
+			ON (b.legislator_id = l.legislator_id)
+		INNER JOIN consolidated___congress.legislators l2 
+			ON (bc.legislator_id = l2.legislator_id)
+	WHERE l2.legislator_birthday > '1900-01-01'
+		AND b.congress_number = 115
+	GROUP BY l2.legislator_id,  l2.legislator_gender, l.legislator_gender
+	ORDER BY cosponsor_gender, cosponsor_id, bill_sponsor_gender 
+)
+SELECT cosponsor_gender, bill_sponsor_gender, avg(c)
+FROM cosponsor_gender_sponsor_gender
+GROUP BY cosponsor_gender, bill_sponsor_gender
+ORDER BY cosponsor_gender, bill_sponsor_gender;
+-- 
+SELECT 'F' cosponsor_gender, round(116.8/ 266.43,2) percent_female_bill_cosponsored
+UNION ALL SELECT 'M', round(64.38 / 217.91,2) ;
 
 
 -- 0400)
